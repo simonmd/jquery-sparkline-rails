@@ -2,7 +2,7 @@
 *
 * jquery.sparkline.js
 *
-* v2.1.1
+* v2.0
 * (c) Splunk, Inc
 * Contact: Gareth Watts (gareth@splunk.com)
 * http://omnipotent.net/jquery.sparkline/
@@ -202,15 +202,7 @@
 
 /*jslint regexp: true, browser: true, jquery: true, white: true, nomen: false, plusplus: false, maxerr: 500, indent: 4 */
 
-(function(factory) {
-    if(typeof define === 'function' && define.amd) {
-		define(['jquery'], factory);
-	}
-	else {
-		factory(jQuery);
-	}
-}
-(function($) {
+(function ($) {
     'use strict';
 
     var UNSET_OPTION = {},
@@ -218,7 +210,7 @@
         remove, isNumber, all, sum, addCSS, ensureArray, formatNumber, RangeMap,
         MouseHandler, Tooltip, barHighlightMixin,
         line, bar, tristate, discrete, bullet, pie, box, defaultStyles, initStyles,
-        VShape, VCanvas_base, VCanvas_canvas, VCanvas_vml, pending, shapeCount = 0;
+         VShape, VCanvas_base, VCanvas_canvas, VCanvas_vml, pending, shapeCount = 0;
 
     /**
      * Default configuration settings
@@ -367,13 +359,18 @@
             'white-space: nowrap;' +
             'padding: 5px;' +
             'border: 1px solid white;' +
-            'z-index: 10000;' +
             '}' +
             '.jqsfield { ' +
             'color: white;' +
             'font: 10px arial, san serif;' +
             'text-align: left;' +
             '}';
+
+    initStyles = function() {
+        addCSS(defaultStyles);
+    };
+
+    $(initStyles);
 
     /**
      * Utilities
@@ -479,16 +476,10 @@
         var vl;
         if (q === 2) {
             vl = Math.floor(values.length / 2);
-            return values.length % 2 ? values[vl] : (values[vl-1] + values[vl]) / 2;
+            return values.length % 2 ? values[vl] : (values[vl] + values[vl + 1]) / 2;
         } else {
-            if (values.length % 2 ) { // odd
-                vl = (values.length * q + q) / 4;
-                return vl % 1 ? (values[Math.floor(vl)] + values[Math.floor(vl) - 1]) / 2 : values[vl-1];
-            } else { //even
-                vl = (values.length * q + 2) / 4;
-                return vl % 1 ? (values[Math.floor(vl)] + values[Math.floor(vl) - 1]) / 2 :  values[vl-1];
-
-            }
+            vl = Math.floor(values.length / 4);
+            return values.length % 2 ? (values[vl * q] + values[vl * q + 1]) / 2 : values[vl * q];
         }
     };
 
@@ -556,8 +547,7 @@
     all = function (val, arr, ignoreNull) {
         var i;
         for (i = arr.length; i--; ) {
-            if (ignoreNull && arr[i] === null) continue;
-            if (arr[i] !== val) {
+            if (arr[i] !== val || (!ignoreNull && val === null)) {
                 return false;
             }
         }
@@ -603,9 +593,9 @@
         if (height === undefined) {
             height = $(this).innerHeight();
         }
-        if ($.fn.sparkline.hasCanvas) {
+        if ($.browser.hasCanvas) {
             target = new VCanvas_canvas(width, height, this, interact);
-        } else if ($.fn.sparkline.hasVML) {
+        } else if (navigator.appName == 'Microsoft Internet Explorer') {
             target = new VCanvas_vml(width, height, this);
         } else {
             return false;
@@ -909,12 +899,6 @@
             $(window).unbind('resize.jqs scroll.jqs');
         }
     });
-
-    initStyles = function() {
-        addCSS(defaultStyles);
-    };
-
-    $(initStyles);
 
     pending = [];
     $.fn.sparkline = function (userValues, userOptions) {
@@ -1500,7 +1484,7 @@
                 canvasTop, canvasLeft,
                 vertex, path, paths, x, y, xnext, xpos, xposnext,
                 last, next, yvalcount, lineShapes, fillShapes, plen,
-                valueSpots, hlSpotsEnabled, color, xvalues, yvalues, i;
+                valueSpots, color, xvalues, yvalues, i;
 
             if (!line._super.render.call(this)) {
                 return;
@@ -1528,20 +1512,18 @@
             }
             if (spotRadius) {
                 // adjust the canvas size as required so that spots will fit
-                hlSpotsEnabled = options.get('highlightSpotColor') &&  !options.get('disableInteraction');
-                if (hlSpotsEnabled || options.get('minSpotColor') || (options.get('spotColor') && yvalues[yvallast] === this.miny)) {
+                if (options.get('minSpotColor') || (options.get('spotColor') && yvalues[yvallast] === this.miny)) {
                     canvasHeight -= Math.ceil(spotRadius);
                 }
-                if (hlSpotsEnabled || options.get('maxSpotColor') || (options.get('spotColor') && yvalues[yvallast] === this.maxy)) {
+                if (options.get('maxSpotColor') || (options.get('spotColor') && yvalues[yvallast] === this.maxy)) {
                     canvasHeight -= Math.ceil(spotRadius);
                     canvasTop += Math.ceil(spotRadius);
                 }
-                if (hlSpotsEnabled ||
-                     ((options.get('minSpotColor') || options.get('maxSpotColor')) && (yvalues[0] === this.miny || yvalues[0] === this.maxy))) {
+                if ((options.get('minSpotColor') || options.get('maxSpotColor')) && (yvalues[0] === this.miny || yvalues[0] === this.maxy)) {
                     canvasLeft += Math.ceil(spotRadius);
                     canvasWidth -= Math.ceil(spotRadius);
                 }
-                if (hlSpotsEnabled || options.get('spotColor') ||
+                if (options.get('spotColor') ||
                     (options.get('minSpotColor') || options.get('maxSpotColor') &&
                         (yvalues[yvallast] === this.miny || yvalues[yvallast] === this.maxy))) {
                     canvasWidth -= Math.ceil(spotRadius);
@@ -1551,7 +1533,7 @@
 
             canvasHeight--;
 
-            if (options.get('normalRangeMin') !== undefined && !options.get('drawNormalOnTop')) {
+            if (options.get('normalRangeMin') && !options.get('drawNormalOnTop')) {
                 this.drawNormalRange(canvasLeft, canvasTop, canvasHeight, canvasWidth, rangey);
             }
 
@@ -1573,8 +1555,8 @@
                         if (yvalues[i - 1] !== null) {
                             path = [];
                             paths.push(path);
+                            vertices.push(null);
                         }
-                        vertices.push(null);
                     }
                 } else {
                     if (y < this.miny) {
@@ -1621,7 +1603,7 @@
                     options.get('fillColor'), options.get('fillColor')).append();
             }
 
-            if (options.get('normalRangeMin') !== undefined && options.get('drawNormalOnTop')) {
+            if (options.get('normalRangeMin') && options.get('drawNormalOnTop')) {
                 this.drawNormalRange(canvasLeft, canvasTop, canvasHeight, canvasWidth, rangey);
             }
 
@@ -1647,7 +1629,7 @@
                 }
 
             }
-            if (spotRadius && options.get('spotColor') && yvalues[yvallast] !== null) {
+            if (spotRadius && options.get('spotColor')) {
                 target.drawCircle(canvasLeft + Math.round((xvalues[xvalues.length - 1] - this.minx) * (canvasWidth / rangex)),
                     canvasTop + Math.round(canvasHeight - (canvasHeight * ((yvalues[yvallast] - this.miny) / rangey))),
                     spotRadius, undefined,
@@ -2103,15 +2085,11 @@
         type: 'bullet',
 
         init: function (el, values, options, width, height) {
-            var min, max, vals;
+            var min, max;
             bullet._super.init.call(this, el, values, options, width, height);
 
             // values: target, performance, range1, range2, range3
-            this.values = values = normalizeValues(values);
-            // target or performance could be null
-            vals = values.slice();
-            vals[0] = vals[0] === null ? vals[2] : vals[0];
-            vals[1] = values[1] === null ? vals[2] : vals[1];
+            values = $.map(values, Number);
             min = Math.min.apply(Math, values);
             max = Math.max.apply(Math, values);
             if (options.get('base') === undefined) {
@@ -2213,16 +2191,12 @@
                 this.shapes[shape.id] = 'r' + i;
                 this.valueShapes['r' + i] = shape.id;
             }
-            if (this.values[1] !== null) {
-                shape = this.renderPerformance().append();
-                this.shapes[shape.id] = 'p1';
-                this.valueShapes.p1 = shape.id;
-            }
-            if (this.values[0] !== null) {
-                shape = this.renderTarget().append();
-                this.shapes[shape.id] = 't0';
-                this.valueShapes.t0 = shape.id;
-            }
+            shape = this.renderPerformance().append();
+            this.shapes[shape.id] = 'p1';
+            this.valueShapes.p1 = shape.id;
+            shape = this.renderTarget().append();
+            this.shapes[shape.id] = 't0';
+            this.valueShapes.t0 = shape.id;
             target.render();
         }
     });
@@ -2329,11 +2303,9 @@
                     options.get('borderColor'), undefined, borderWidth).append();
             }
             for (i = values.length; i--;) {
-                if (values[i]) { // don't render zero values
-                    shape = this.renderSlice(i).append();
-                    this.valueShapes[i] = shape.id; // store just the shapeid
-                    this.shapes[shape.id] = i;
-                }
+                shape = this.renderSlice(i).append();
+                this.valueShapes[i] = shape.id; // store just the shapeid
+                this.shapes[shape.id] = i;
             }
             target.render();
         }
@@ -2528,19 +2500,13 @@
     // Setup a very simple "virtual canvas" to make drawing the few shapes we need easier
     // This is accessible as $(foo).simpledraw()
 
-    // Detect browser renderer support
-    (function() {
-        if (document.namespaces && !document.namespaces.v) {
-            $.fn.sparkline.hasVML = true;
-            document.namespaces.add('v', 'urn:schemas-microsoft-com:vml', '#default#VML');
-        } else {
-            $.fn.sparkline.hasVML = false;
-        }
+    if ((navigator.appName == 'Microsoft Internet Explorer') && !document.namespaces.v) {
+        document.namespaces.add('v', 'urn:schemas-microsoft-com:vml', '#default#VML');
+    }
 
-        var el = document.createElement('canvas');
-        $.fn.sparkline.hasCanvas = !!(el.getContext && el.getContext('2d'));
-
-    })()
+    if ($.browser.hasCanvas === undefined) {
+        $.browser.hasCanvas = document.createElement('canvas').getContext !== undefined;
+    }
 
     VShape = createClass({
         init: function (target, id, type, args) {
@@ -2940,7 +2906,7 @@
         _drawPieSlice: function (shapeid, x, y, radius, startAngle, endAngle, lineColor, fillColor) {
             var vpath, startx, starty, endx, endy, stroke, fill, vel;
             if (startAngle === endAngle) {
-                return '';  // VML seems to have problem when start angle equals end angle.
+                return;  // VML seems to have problem when start angle equals end angle.
             }
             if ((endAngle - startAngle) === (2 * Math.PI)) {
                 startAngle = 0.0;  // VML seems to have a problem when drawing a full circle that doesn't start 0
@@ -2952,18 +2918,9 @@
             endx = x + Math.round(Math.cos(endAngle) * radius);
             endy = y + Math.round(Math.sin(endAngle) * radius);
 
-            if (startx === endx && starty === endy) {
-                if ((endAngle - startAngle) < Math.PI) {
-                    // Prevent very small slices from being mistaken as a whole pie
-                    return '';
-                }
-                // essentially going to be the entire circle, so ignore startAngle
-                startx = endx = x + radius;
-                starty = endy = y;
-            }
-
+            // Prevent very small slices from being mistaken as a whole pie
             if (startx === endx && starty === endy && (endAngle - startAngle) < Math.PI) {
-                return '';
+                return;
             }
 
             vpath = [x - radius, y - radius, x + radius, y + radius, startx, starty, endx, endy];
@@ -3044,4 +3001,5 @@
         }
     });
 
-}));
+
+})(jQuery);
