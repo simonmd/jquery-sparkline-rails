@@ -35,15 +35,15 @@ Or install it yourself as:
 
 ## Usage
 
-Just add a `require 'sparklines'` towards the top of your source in the usual fashion.
+Just add a `require 'jquery.sparkline'` towards the top of your source in the usual fashion.
 
 For Coffeescript
 
-    #= require 'sparklines'
+    #= require 'jquery.sparkline'
 
 For JavaScript
 
-    //= require 'sparklines'
+    //= require 'jquery.sparkline'
 
 ## Contributing
 
